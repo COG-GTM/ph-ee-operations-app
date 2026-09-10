@@ -93,7 +93,7 @@ public class BatchServiceImpl implements BatchService{
             } else {
                 payeeFspSet = new HashSet<>();
                 int pageNumber = (offset / limit);
-            Page<Transfer> transferList = transferRepository.findAllByBatchId(batch.getSubBatchId(), PageRequest.of(pageNumber, limit));
+                Page<Transfer> transferList = transferRepository.findAllByBatchId(batch.getSubBatchId(), PageRequest.of(pageNumber, limit));
 
                 log.info(transferList.toString());
                 List<Instruction>  instructionList = generateInstructionList(transferList.getContent(),orderBy,sortBy);
@@ -110,7 +110,7 @@ public class BatchServiceImpl implements BatchService{
         for(Batch subBatches : subBatchList) {
             payeeFspSet = new HashSet<>();
             int pageNumber = (offset / limit);
-                Page<Transfer> transferList = transferRepository.findAllByBatchId(batch.getSubBatchId(), PageRequest.of(pageNumber, limit));
+            Page<Transfer> transferList = transferRepository.findAllByBatchId(batch.getSubBatchId(), PageRequest.of(pageNumber, limit));
             log.info(subBatches.getBatchId());
             log.info(transferList.toString());
             List<Instruction>  instructionList = generateInstructionList(transferList.getContent(),orderBy,sortBy);
