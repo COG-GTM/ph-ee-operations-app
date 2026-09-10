@@ -39,11 +39,12 @@ security:
     enable: false
 
 spring:
-  resources:
-    add-mappings: false
   mvc:
-    favicon:
-      enabled: false
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  web:
+    resources:
+      add-mappings: false
   jmx:
     enabled: false
 
@@ -61,8 +62,8 @@ rest:
 logging:
   level:
     ROOT: ERROR
-    pattern:
-      console: "%clr(%d{dd-MM-yyyy HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([%35.35t]){faint} %clr(%-28.28logger{28}){cyan} %clr(:){faint}%X{BUSINESS-LOG} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
+  pattern:
+    console: "%clr(%d{dd-MM-yyyy HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([%35.35t]){faint} %clr(%-28.28logger{28}){cyan} %clr(:){faint}%X{BUSINESS-LOG} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
 
 cloud:
   aws:
@@ -105,5 +106,3 @@ management:
       readiness:
         enabled: true
 #      show-details: always
-
-
