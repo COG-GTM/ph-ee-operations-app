@@ -14,6 +14,7 @@ import org.apache.fineract.utils.DateUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -32,10 +33,14 @@ import java.io.FileWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.apache.fineract.core.service.OperatorUtils.strip;
 
@@ -71,6 +76,8 @@ public class BatchApi {
 
     @Value("${application.bucket-name}")
     private String bucketName;
+
+    private static final int VARIABLE_LOOKUP_CHUNK_SIZE = 1000;
     @Autowired
     private BatchService batchService;
 
@@ -345,9 +352,9 @@ public class BatchApi {
             transfers = transferRepository.findAllByBatchId(batch.getBatchId());
         }
 
+            Map<Long, Variable> paymentModes = findPaymentModeVariables(transfers);
             for (Transfer transfer : transfers) {
-                Optional<Variable> variable = variableRepository.findByWorkflowInstanceKeyAndVariableName("paymentMode",
-                        transfer.getWorkflowInstanceKey());
+                Optional<Variable> variable = Optional.ofNullable(paymentModes.get(transfer.getWorkflowInstanceKey()));
                 if (variable.isPresent()) {
                     // this will prevent 2x count of variables by eliminating data from transfers table
                     if (paymentModeConfig.getByMode(strip(variable.get().getValue()))
@@ -379,6 +386,22 @@ public class BatchApi {
         }
         saveBatch(batch, completed, ongoing, failed, total, totalAmount.longValue(), completedAmount.longValue(), ongoingAmount.longValue(), failedAmount.longValue());
     }
+    private Map<Long, Variable> findPaymentModeVariables(List<Transfer> transfers) {
+        List<Long> keys = transfers.stream().map(Transfer::getWorkflowInstanceKey)
+                .filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        Map<Long, Variable> paymentModes = new HashMap<>();
+        for (int i = 0; i < keys.size(); i += VARIABLE_LOOKUP_CHUNK_SIZE) {
+            List<Long> chunk = new ArrayList<>(keys.subList(i, Math.min(i + VARIABLE_LOOKUP_CHUNK_SIZE, keys.size())));
+            for (Variable variable : variableRepository.findAllByVariableNameAndWorkflowInstanceKeyIn("paymentMode", chunk)) {
+                if (paymentModes.putIfAbsent(variable.getWorkflowInstanceKey(), variable) != null) {
+                    // same failure as the former per-transfer Optional lookup when a key has two paymentMode rows
+                    throw new IncorrectResultSizeDataAccessException(1, 2);
+                }
+            }
+        }
+        return paymentModes;
+    }
+
     private Batch getParentBatchSummary(List<Batch> batches){
         StringBuilder modes = new StringBuilder();
 
